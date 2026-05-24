@@ -238,7 +238,6 @@
       confirmEl.innerHTML = `✅ Réservé${total ? ` — Total : <strong>${total} DT</strong>` : ''} ! Wael Ridene te contactera pour la récupération.`;
       confirmEl.style.display = 'block';
       // Update stock display inline
-      const item = currentItems.find(i => i.id === itemId);
       if (item) {
         item.remaining = Math.max(0, item.remaining - qty);
         const p = pct(item);
