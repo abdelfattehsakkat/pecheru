@@ -21,7 +21,13 @@
         🔔 Activer les notifs
       </button>
     </div>
-  </header>
+  </div>
+  <div class="page-header-wave">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 32" preserveAspectRatio="none">
+      <path fill="#dff3fc" d="M0,18 C180,30 360,6 540,18 C720,30 900,6 1080,18 C1260,30 1400,8 1440,18 L1440,32 L0,32 Z"/>
+    </svg>
+  </div>
+</header>
 
   <main class="container" id="app">
     <!-- Content injected by JS -->
@@ -95,8 +101,7 @@
     }
 
     const photoHtml = catchData.photo_url
-      ? `<img src="${catchData.photo_url}" alt="Photo de pêche"
-             style="width:100%;max-height:320px;object-fit:cover;border-radius:10px;margin-bottom:18px">`
+      ? `<img src="${catchData.photo_url}" alt="Photo de pêche" class="hero-photo">`
       : '';
 
     const itemsHtml = items.map(item => renderFishCard(item)).join('');
@@ -122,7 +127,7 @@
     const lowClass = p < 25 ? 'low' : '';
     const photoHtml = item.photo_url
       ? `<img src="${esc(item.photo_url)}" alt="${esc(item.species)}">`
-      : `<div style="height:100px;background:linear-gradient(135deg,var(--ocean),var(--surface));display:flex;align-items:center;justify-content:center;font-size:2.5rem">🐟</div>`;
+      : `<div class="fish-placeholder">🐟</div>`;
 
     return `
       <div class="fish-card" id="fish-card-${item.id}">
@@ -132,7 +137,7 @@
           <div class="fish-qty ${isEmpty ? 'empty' : ''}" id="qty-label-${item.id}">
             ${isEmpty ? '🚫 Épuisé' : qtyLabel(item, item.remaining)}
           </div>
-          ${item.price ? `<div style="font-weight:700;color:var(--coral);font-size:.95rem;margin:2px 0">${priceLabel(item)}</div>` : ''}
+          ${item.price ? `<div class="fish-price">${priceLabel(item)}</div>` : ''}
           <div class="stock-bar">
             <div class="stock-bar-fill ${isEmpty ? 'empty' : lowClass}"
                  id="stock-bar-${item.id}"
