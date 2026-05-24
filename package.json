@@ -1,0 +1,34 @@
+{
+  "name": "pecheur",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "generate-vapid": "npx web-push generate-vapid-keys",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abdelfattehsakkat/pecheru.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/abdelfattehsakkat/pecheru/issues"
+  },
+  "homepage": "https://github.com/abdelfattehsakkat/pecheru#readme",
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/jwt": "^10.1.0",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/static": "^9.1.3",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "nodemailer": "^8.0.8",
+    "web-push": "^3.6.7"
+  }
+}

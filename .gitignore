@@ -1,0 +1,28 @@
+# Dependency directories
+node_modules/
+
+# Environment
+.env
+
+# Database files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads (committed separately or mounted via volume)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# PM2
+.pm2/
+
+# Build artifacts
+dist/

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0077b6" />
+  <title>FishCall 🎣</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="page-header">
+    <div class="container">
+      <div>
+        <h1>🎣 FishCall</h1>
+        <p class="subtitle">Les prises fraîches de Hamdène</p>
+      </div>
+      <button id="push-btn" class="btn btn-secondary btn-sm" style="display:none">
+        🔔 Activer les notifs
+      </button>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+    <!-- Content injected by JS -->
+    <div class="empty-state">
+      <div class="emoji">⏳</div>
+      <p>Chargement…</p>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+  // ──────────────────────────────────────────────────────────────────────────
+  // Utilities
+  // ──────────────────────────────────────────────────────────────────────────
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.className = '', 3000);
+  }
+
+  function qtyLabel(item, qty) {
+    if (item.unit_type === 'unit') return `${qty} poisson${qty > 1 ? 's' : ''} restant${qty > 1 ? 's' : ''}`;
+    if (item.unit_type === 'kg')   return `${qty} kg restant${qty > 1 ? 's' : ''}`;
+    return qty > 0 ? 'Lot disponible' : 'Lot épuisé';
+  }
+
+  function pct(item) {
+    if (!item.total_quantity) return 0;
+    return Math.round((item.remaining / item.total_quantity) * 100);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Render
+  // ──────────────────────────────────────────────────────────────────────────
+  const app = $('#app');
+  let currentCatch = null;
+  let currentItems = [];
+
+  function render(catchData, items) {
+    currentCatch = catchData;
+    currentItems = items;
+
+    if (!catchData) {
+      app.innerHTML = `
+        <div class="empty-state">
+          <div class="emoji">🎣</div>
+          <p>Pas encore de pêche aujourd'hui…<br>
+             Reviens bientôt !</p>
+        </div>`;
+      return;
+    }
+
+    const photoHtml = catchData.photo_url
+      ? `<img src="${catchData.photo_url}" alt="Photo de pêche"
+             style="width:100%;max-height:320px;object-fit:cover;border-radius:10px;margin-bottom:18px">`
+      : '';
+
+    const itemsHtml = items.map(item => renderFishCard(item)).join('');
+
+    app.innerHTML = `
+      ${photoHtml}
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-body">
+          <h2 style="color:var(--deep);margin-bottom:6px">${esc(catchData.title)}</h2>
+          ${catchData.location ? `<p style="color:var(--gray500);font-size:.9rem">📍 ${esc(catchData.location)}</p>` : ''}
+          ${catchData.note    ? `<p style="margin-top:8px">${esc(catchData.note)}</p>` : ''}
+        </div>
+      </div>
+      <div class="fish-grid" id="fish-grid">${itemsHtml}</div>`;
+
+    // Attach reservation listeners
+    items.forEach(item => attachReserveListeners(item.id));
+  }
+
+  function renderFishCard(item) {
+    const p = pct(item);
+    const isEmpty = item.remaining <= 0;
+    const lowClass = p < 25 ? 'low' : '';
+    const photoHtml = item.photo_url
+      ? `<img src="${esc(item.photo_url)}" alt="${esc(item.species)}">`
+      : `<div style="height:100px;background:linear-gradient(135deg,var(--ocean),var(--surface));display:flex;align-items:center;justify-content:center;font-size:2.5rem">🐟</div>`;
+
+    return `
+      <div class="fish-card" id="fish-card-${item.id}">
+        ${photoHtml}
+        <div class="fish-body">
+          <div class="fish-name">${esc(item.species)}</div>
+          <div class="fish-qty ${isEmpty ? 'empty' : ''}" id="qty-label-${item.id}">
+            ${isEmpty ? '🚫 Épuisé' : qtyLabel(item, item.remaining)}
+          </div>
+          <div class="stock-bar">
+            <div class="stock-bar-fill ${isEmpty ? 'empty' : lowClass}"
+                 id="stock-bar-${item.id}"
+                 style="width:${p}%"></div>
+          </div>
+          ${isEmpty
+            ? `<button class="btn btn-secondary btn-sm" disabled>Épuisé 🚫</button>`
+            : `<button class="btn btn-coral btn-sm" id="reserve-btn-${item.id}"
+                       onclick="toggleForm(${item.id})">
+                 Je réserve 🎣
+               </button>`}
+          <div class="reserve-form" id="reserve-form-${item.id}">
+            <div class="form-group">
+              <label>Votre nom</label>
+              <input class="form-control" id="rname-${item.id}" type="text"
+                     placeholder="Prénom et nom" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label>Téléphone</label>
+              <input class="form-control" id="rphone-${item.id}" type="tel"
+                     placeholder="+216 XX XXX XXX" autocomplete="tel">
+            </div>
+            <div class="form-group">
+              <label>${item.unit_type === 'kg' ? 'Quantité (kg)' : item.unit_type === 'lot' ? 'Quantité (lot)' : 'Quantité (unités)'}</label>
+              <input class="form-control" id="rqty-${item.id}"
+                     type="number" min="0.1" step="${item.unit_type === 'kg' ? '0.5' : '1'}"
+                     max="${item.remaining}" value="${item.unit_type === 'kg' ? '0.5' : '1'}">
+            </div>
+            <div class="reserve-error" id="reserve-error-${item.id}"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-success btn-sm" onclick="submitReservation(${item.id})">
+                ✅ Confirmer
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleForm(${item.id})">
+                Annuler
+              </button>
+            </div>
+            <div class="reserve-confirm" id="reserve-confirm-${item.id}">
+              ✅ Réservé ! Hamdène te contactera pour la récupération.
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function attachReserveListeners() {} // noop — using inline handlers
+
+  function toggleForm(itemId) {
+    const form = $(`#reserve-form-${itemId}`);
+    form.classList.toggle('open');
+  }
+
+  async function submitReservation(itemId) {
+    const name  = $(`#rname-${itemId}`).value.trim();
+    const phone = $(`#rphone-${itemId}`).value.trim();
+    const qty   = parseFloat($(`#rqty-${itemId}`).value);
+    const errEl = $(`#reserve-error-${itemId}`);
+
+    errEl.style.display = 'none';
+
+    if (!name || !phone || !qty || qty <= 0) {
+      errEl.textContent = 'Merci de remplir tous les champs.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fish_item_id: itemId, friend_name: name, friend_phone: phone, quantity: qty }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Erreur lors de la réservation.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Show confirmation
+      $(`#reserve-confirm-${itemId}`).style.display = 'block';
+      // Update stock display inline
+      const item = currentItems.find(i => i.id === itemId);
+      if (item) {
+        item.remaining = Math.max(0, item.remaining - qty);
+        const p = pct(item);
+        $(`#qty-label-${itemId}`).textContent = item.remaining <= 0 ? '🚫 Épuisé' : qtyLabel(item, item.remaining);
+        $(`#stock-bar-${itemId}`).style.width = p + '%';
+        if (item.remaining <= 0) $(`#stock-bar-${itemId}`).classList.add('empty');
+      }
+    } catch {
+      errEl.textContent = 'Erreur réseau, réessaie.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Data fetching
+  // ──────────────────────────────────────────────────────────────────────────
+  async function loadCurrent() {
+    try {
+      const res = await fetch('/api/catch/current');
+      const data = await res.json();
+      render(data.catch, data.items || []);
+    } catch {
+      app.innerHTML = `<div class="empty-state"><div class="emoji">⚠️</div><p>Erreur de chargement.</p></div>`;
+    }
+  }
+
+  async function pollStock() {
+    if (!currentCatch) return;
+    try {
+      const res = await fetch(`/api/catch/${currentCatch.id}/stock`);
+      const data = await res.json();
+      if (!data.items) return;
+
+      data.items.forEach(serverItem => {
+        const local = currentItems.find(i => i.id === serverItem.id);
+        if (!local) return;
+
+        const changed = local.remaining !== serverItem.remaining;
+        local.remaining = serverItem.remaining;
+
+        if (changed) {
+          const p = pct(local);
+          const qtyEl  = $(`#qty-label-${serverItem.id}`);
+          const barEl  = $(`#stock-bar-${serverItem.id}`);
+          const btnEl  = $(`#reserve-btn-${serverItem.id}`);
+
+          if (qtyEl)  qtyEl.textContent = local.remaining <= 0 ? '🚫 Épuisé' : qtyLabel(local, local.remaining);
+          if (barEl) {
+            barEl.style.width = p + '%';
+            if (local.remaining <= 0) barEl.classList.add('empty');
+          }
+          if (btnEl && local.remaining <= 0) {
+            btnEl.disabled = true;
+            btnEl.textContent = 'Épuisé 🚫';
+            btnEl.className = 'btn btn-secondary btn-sm';
+          }
+        }
+      });
+    } catch {}
+  }
+
+  // Initial load + polling every 10 s
+  loadCurrent();
+  setInterval(pollStock, 10000);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PWA — Push notifications
+  // ──────────────────────────────────────────────────────────────────────────
+  async function initPush() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+    const res = await fetch('/api/push/vapid-public-key');
+    const { publicKey } = await res.json();
+    if (!publicKey) return;
+
+    const pushBtn = $('#push-btn');
+    pushBtn.style.display = 'inline-flex';
+
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+
+    if (existing) {
+      pushBtn.textContent = '🔔 Notifs activées';
+      pushBtn.disabled = true;
+      return;
+    }
+
+    pushBtn.addEventListener('click', async () => {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        showToast('Permission refusée pour les notifications.', 'error');
+        return;
+      }
+      try {
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub }),
+        });
+        pushBtn.textContent = '🔔 Notifs activées';
+        pushBtn.disabled = true;
+        showToast('Notifications activées ! 🎣', 'success');
+      } catch (err) {
+        showToast('Erreur lors de l\'activation.', 'error');
+        console.error(err);
+      }
+    });
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => initPush())
+      .catch(console.error);
+  }
+  </script>
+</body>
+</html>
