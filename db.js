@@ -60,6 +60,12 @@ function migrate() {
       reserved_at  DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Incremental migrations — safe to run on existing DB
+  const addColumn = (table, col, def) => {
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
+  };
+  addColumn('fish_items', 'price', 'REAL');
 }
 
 migrate();

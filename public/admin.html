@@ -163,12 +163,17 @@
             <input class="form-control" id="im-qty" type="number" min="0.1" step="0.5" placeholder="ex : 10">
           </div>
           <div class="form-group">
+            <label>Prix (DT) <span style="font-weight:400;color:var(--gray500)">optionnel</span></label>
+            <input class="form-control" id="im-price" type="number" min="0" step="0.5"
+                   placeholder="ex : 8 (par unité/kg ou le lot)">
+          </div>
+        </div>
+        <input type="hidden" id="im-photo-url">
+        <div class="form-group">
             <label>Photo (optionnel)</label>
             <input class="form-control" id="im-photo-file" type="file" accept="image/*"
                    onchange="uploadPhoto(this,'im-photo-url')">
           </div>
-        </div>
-        <input type="hidden" id="im-photo-url">
         <div id="im-photo-preview" style="margin-top:8px"></div>
       </div>
       <div class="modal-footer">
@@ -355,6 +360,7 @@
           <div class="species-name">${esc(item.species)}</div>
           <div style="font-size:.85rem;color:var(--gray700);min-width:120px">
             ${item.remaining}/${item.total_quantity} ${unitLabel(item.unit_type)}
+            ${item.price ? `<span style="color:var(--coral);font-weight:600;margin-left:6px">${item.price} DT/${item.unit_type === 'lot' ? 'lot' : item.unit_type === 'kg' ? 'kg' : 'u.'}</span>` : ''}
             <div class="stock-bar" style="margin:4px 0">
               <div class="stock-bar-fill ${p===0?'empty':lowClass}" style="width:${p}%"></div>
             </div>
@@ -483,12 +489,12 @@
     $('#im-species').value  = '';
     $('#im-unit').value     = 'unit';
     $('#im-qty').value      = '';
+    $('#im-price').value    = '';
     $('#im-photo-url').value = '';
     $('#im-photo-preview').innerHTML = '';
 
     if (itemId) {
       $('#item-modal-title').textContent = 'Modifier l\'espèce';
-      // Load item data — we'll find it from existing DOM data via API
       api('GET', `/catch/${catchId}`)
         .then(data => {
           const item = data.items.find(i => i.id === itemId);
@@ -496,6 +502,7 @@
             $('#im-species').value = item.species || '';
             $('#im-unit').value    = item.unit_type || 'unit';
             $('#im-qty').value     = item.total_quantity || '';
+            $('#im-price').value   = item.price || '';
             $('#im-photo-url').value = item.photo_url || '';
             if (item.photo_url) $('#im-photo-preview').innerHTML = `<img src="${esc(item.photo_url)}" style="max-height:100px;border-radius:6px">`;
           }
@@ -511,10 +518,12 @@
   async function saveItem() {
     const id      = $('#im-id').value;
     const catchId = $('#im-catch-id').value;
+    const priceVal = parseFloat($('#im-price').value);
     const body    = {
       species:        $('#im-species').value.trim(),
       unit_type:      $('#im-unit').value,
       total_quantity: parseFloat($('#im-qty').value),
+      price:          isNaN(priceVal) ? undefined : priceVal,
       photo_url:      $('#im-photo-url').value || undefined,
     };
     if (!body.species || !body.total_quantity) {

@@ -56,6 +56,18 @@
     return qty > 0 ? 'Lot disponible' : 'Lot épuisé';
   }
 
+  function priceLabel(item) {
+    if (!item.price) return '';
+    if (item.unit_type === 'unit') return `${item.price} DT / unité`;
+    if (item.unit_type === 'kg')   return `${item.price} DT / kg`;
+    return `${item.price} DT le lot`;
+  }
+
+  function calcTotal(item, qty) {
+    if (!item.price || item.unit_type === 'lot') return null;
+    return (item.price * qty).toFixed(2);
+  }
+
   function pct(item) {
     if (!item.total_quantity) return 0;
     return Math.round((item.remaining / item.total_quantity) * 100);
@@ -120,6 +132,7 @@
           <div class="fish-qty ${isEmpty ? 'empty' : ''}" id="qty-label-${item.id}">
             ${isEmpty ? '🚫 Épuisé' : qtyLabel(item, item.remaining)}
           </div>
+          ${item.price ? `<div style="font-weight:700;color:var(--coral);font-size:.95rem;margin:2px 0">${priceLabel(item)}</div>` : ''}
           <div class="stock-bar">
             <div class="stock-bar-fill ${isEmpty ? 'empty' : lowClass}"
                  id="stock-bar-${item.id}"
@@ -146,8 +159,10 @@
               <label>${item.unit_type === 'kg' ? 'Quantité (kg)' : item.unit_type === 'lot' ? 'Quantité (lot)' : 'Quantité (unités)'}</label>
               <input class="form-control" id="rqty-${item.id}"
                      type="number" min="0.1" step="${item.unit_type === 'kg' ? '0.5' : '1'}"
-                     max="${item.remaining}" value="${item.unit_type === 'kg' ? '0.5' : '1'}">
+                     max="${item.remaining}" value="${item.unit_type === 'kg' ? '0.5' : '1'}"
+                     oninput="updateTotal(${item.id})">
             </div>
+            ${item.price ? `<div id="rtotal-${item.id}" style="font-weight:700;color:var(--coral);font-size:1rem;margin-bottom:8px"></div>` : ''}
             <div class="reserve-error" id="reserve-error-${item.id}"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn btn-success btn-sm" onclick="submitReservation(${item.id})">
@@ -175,6 +190,17 @@
   function toggleForm(itemId) {
     const form = $(`#reserve-form-${itemId}`);
     form.classList.toggle('open');
+    if (form.classList.contains('open')) updateTotal(itemId);
+  }
+
+  function updateTotal(itemId) {
+    const item = currentItems.find(i => i.id === itemId);
+    if (!item || !item.price) return;
+    const qty = parseFloat($(`#rqty-${itemId}`)?.value || 0);
+    const totalEl = $(`#rtotal-${itemId}`);
+    if (!totalEl) return;
+    const t = calcTotal(item, qty);
+    totalEl.textContent = t ? `Total estimé : ${t} DT` : '';
   }
 
   async function submitReservation(itemId) {
@@ -206,7 +232,11 @@
       }
 
       // Show confirmation
-      $(`#reserve-confirm-${itemId}`).style.display = 'block';
+      const item = currentItems.find(i => i.id === itemId);
+      const total = item ? calcTotal(item, qty) : null;
+      const confirmEl = $(`#reserve-confirm-${itemId}`);
+      confirmEl.innerHTML = `✅ Réservé${total ? ` — Total : <strong>${total} DT</strong>` : ''} ! Wael Ridene te contactera pour la récupération.`;
+      confirmEl.style.display = 'block';
       // Update stock display inline
       const item = currentItems.find(i => i.id === itemId);
       if (item) {

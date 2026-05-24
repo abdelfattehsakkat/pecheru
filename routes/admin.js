@@ -209,17 +209,18 @@ module.exports = async function adminRoutes(fastify) {
             species:        { type: 'string', minLength: 1 },
             unit_type:      { type: 'string', enum: ['unit', 'kg', 'lot'] },
             total_quantity: { type: 'number', exclusiveMinimum: 0 },
+            price:          { type: 'number', minimum: 0 },
             photo_url:      { type: 'string' },
           },
           additionalProperties: false,
         },
       },
     }, async (req, reply) => {
-      const { species, unit_type, total_quantity, photo_url } = req.body;
+      const { species, unit_type, total_quantity, price, photo_url } = req.body;
       const res = db.prepare(
-        `INSERT INTO fish_items (catch_id, species, unit_type, total_quantity, remaining, photo_url)
-         VALUES (?,?,?,?,?,?)`
-      ).run(req.params.id, species, unit_type, total_quantity, total_quantity, photo_url || null);
+        `INSERT INTO fish_items (catch_id, species, unit_type, total_quantity, remaining, price, photo_url)
+         VALUES (?,?,?,?,?,?,?)`
+      ).run(req.params.id, species, unit_type, total_quantity, total_quantity, price ?? null, photo_url || null);
       return reply.status(201).send({ item: db.prepare('SELECT * FROM fish_items WHERE id = ?').get(res.lastInsertRowid) });
     });
 
@@ -232,6 +233,7 @@ module.exports = async function adminRoutes(fastify) {
             unit_type:      { type: 'string', enum: ['unit', 'kg', 'lot'] },
             total_quantity: { type: 'number', exclusiveMinimum: 0 },
             remaining:      { type: 'number', minimum: 0 },
+            price:          { type: 'number', minimum: 0 },
             photo_url:      { type: 'string' },
           },
           additionalProperties: false,
@@ -241,16 +243,17 @@ module.exports = async function adminRoutes(fastify) {
       if (!db.prepare('SELECT id FROM fish_items WHERE id = ?').get(req.params.id))
         return reply.status(404).send({ error: 'Article introuvable' });
 
-      const { species, unit_type, total_quantity, remaining, photo_url } = req.body;
+      const { species, unit_type, total_quantity, remaining, price, photo_url } = req.body;
       db.prepare(
         `UPDATE fish_items SET
            species        = COALESCE(?, species),
            unit_type      = COALESCE(?, unit_type),
            total_quantity = COALESCE(?, total_quantity),
            remaining      = COALESCE(?, remaining),
+           price          = COALESCE(?, price),
            photo_url      = COALESCE(?, photo_url)
          WHERE id = ?`
-      ).run(species || null, unit_type || null, total_quantity ?? null, remaining ?? null, photo_url || null, req.params.id);
+      ).run(species || null, unit_type || null, total_quantity ?? null, remaining ?? null, price ?? null, photo_url || null, req.params.id);
       return { item: db.prepare('SELECT * FROM fish_items WHERE id = ?').get(req.params.id) };
     });
 
