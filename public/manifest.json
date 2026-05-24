@@ -1,7 +1,7 @@
 {
   "name": "FishCall",
   "short_name": "FishCall",
-  "description": "Les prises fraîches de Hamdène — réservez votre poisson 🎣",
+  "description": "Les prises fraîches de Wael Ridene — réservez votre poisson 🎣",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

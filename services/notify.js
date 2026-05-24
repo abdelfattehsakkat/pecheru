@@ -44,7 +44,7 @@ function buildEmailHtml(catchRow, items) {
 <html lang="fr">
 <head><meta charset="UTF-8"></head>
 <body style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;color:#1a3a4a">
-  <h1 style="color:#0077b6">🎣 Hamdène vient de rentrer de pêche !</h1>
+  <h1 style="color:#0077b6">🎣 Wael Ridene vient de rentrer de pêche !</h1>
   <p><strong>Pêche :</strong> ${catchRow.title}</p>
   ${catchRow.location ? `<p><strong>Lieu :</strong> ${catchRow.location}</p>` : ''}
   ${catchRow.note ? `<p>${catchRow.note}</p>` : ''}
@@ -57,7 +57,7 @@ function buildEmailHtml(catchRow, items) {
     </a>
   </p>
   <hr style="margin-top:30px">
-  <small style="color:#888">Tu reçois cet email car tu fais partie des amis de Hamdène.
+  <small style="color:#888">Tu reçois cet email car tu fais partie des amis de Wael Ridene.
   Visite <a href="${publicUrl}">${publicUrl}</a> pour gérer tes notifications.</small>
 </body>
 </html>`;

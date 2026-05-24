@@ -43,7 +43,7 @@ module.exports = async function adminRoutes(fastify) {
         path: '/',
         httpOnly: true,
         sameSite: 'strict',
-        secure: process.env.NODE_ENV === 'production',
+        secure: (process.env.PUBLIC_URL || '').startsWith('https'),
         maxAge: 60 * 60 * 24 * 7,
       })
       .send({ ok: true });
